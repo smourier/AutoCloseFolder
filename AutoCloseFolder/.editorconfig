@@ -1,0 +1,4 @@
+﻿[*.cs]
+
+# VSTHRD010: Accessing "UIHierarchyItems" should only be done on the main thread. Call Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread() first.
+dotnet_diagnostic.VSTHRD010.severity = silent
