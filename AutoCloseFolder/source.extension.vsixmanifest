@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="1be42273-f1fb-45ad-84b8-adb55c7325aa" Version="1.0" Language="en-US" Publisher="Simon Mourier" />
+        <Identity Id="1be42273-f1fb-45ad-84b8-adb55c7325aa" Version="1.0.0" Language="en-US" Publisher="Simon Mourier" />
         <DisplayName>Auto Close Folders</DisplayName>
         <Description xml:space="preserve">A Visual Studio Extension that automatically closes a folder when no document in that folder is open.</Description>
-        <Tags>cleanup, collapse</Tags>
+        <MoreInfo>https://github.com/smourier/AutoCloseFolder</MoreInfo>
+        <Icon>Resources\Icon.png</Icon>
+        <PreviewImage>Resources\Preview.png</PreviewImage>
+        <Tags>solution explorer, cleanup, collapse</Tags>
     </Metadata>
     <Installation>
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[16.0, 17.0)" />

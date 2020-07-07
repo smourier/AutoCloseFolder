@@ -19,6 +19,12 @@ namespace AutoCloseFolder
         public int Period { get; set; } = _defaultPeriod;
 
         [Category("Solution Explorer")]
+        [DisplayName("Collapsing Period After Node Expansion")]
+        [Description("Collapsing period after any node expansion in milliseconds.")]
+        [DefaultValue(false)]
+        public int PeriodOnExpansion { get; set; } = _defaultPeriodOnExpansion;
+
+        [Category("Solution Explorer")]
         [DisplayName("Collapse Files and Folders On Close")]
         [Description("Collapse nodes in Solution Explorer on close.")]
         [DefaultValue(true)]
@@ -36,7 +42,10 @@ namespace AutoCloseFolder
         [DefaultValue(false)]
         public bool CollapseProjects { get; set; }
 
-        private const int _defaultPeriod = 1000;
+        private const int _defaultPeriodOnExpansion = 120000;
+        private const int _defaultPeriod = 30000;
+
         internal int FinalPeriod => Math.Max(_defaultPeriod, Period);
+        internal int FinalPeriodOnExpansion => Math.Max(_defaultPeriodOnExpansion, PeriodOnExpansion);
     }
 }

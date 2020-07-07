@@ -12,51 +12,53 @@ namespace AutoCloseFolder
     public sealed class AutoCloseFolder : IDisposable
     {
         private readonly DTE2 _dte;
-        private readonly Options _options;
         private readonly RunningDocumentTable _table;
-        private readonly RunningDocumentTableEventListener _documentslistener;
         private readonly HierarchyEventListener _hierarchieslistener;
-        private readonly Timer _timer;
+        private RunningDocumentTableEventListener _documentslistener;
+        private Timer _timer;
 
         public AutoCloseFolder(IServiceProvider serviceProvider, DTE2 dte, Options options)
         {
             _dte = dte;
-            _options = options;
+            Options = options;
             _table = new RunningDocumentTable(serviceProvider);
+
             _documentslistener = new RunningDocumentTableEventListener(_table);
-            _documentslistener.Change += (s, e) => UpdateTimer();
+            _documentslistener.Change += (s, e) => RestartTimer(Options.FinalPeriodOnExpansion);
 
             _hierarchieslistener = new HierarchyEventListener();
-            _hierarchieslistener.Change += (s, e) => UpdateTimer();
+            _hierarchieslistener.Change += (s, e) => RestartTimer();
 
-            _timer = new Timer((state) => ExecuteCloseFolderWithoutRunningDocuments(), null, _options.FinalPeriod, Timeout.Infinite);
+            _timer = new Timer((state) => ExecuteCloseFolderWithoutRunningDocuments(), null, Options.FinalPeriod, Timeout.Infinite);
 
             Microsoft.VisualStudio.Shell.Events.SolutionEvents.OnAfterOpenProject += OnAfterOpenProject;
             Microsoft.VisualStudio.Shell.Events.SolutionEvents.OnBeforeCloseProject += OnBeforeCloseProject;
             Microsoft.VisualStudio.Shell.Events.SolutionEvents.OnBeforeCloseSolution += (s, e) =>
             {
-                _timer.Change(Timeout.Infinite, Timeout.Infinite);
+                _timer?.Change(Timeout.Infinite, Timeout.Infinite);
                 ExecuteCloseSolution();
             };
         }
 
+        public Options Options { get; }
+
         private void OnAfterOpenProject(object sender, OpenProjectEventArgs e)
         {
             _hierarchieslistener.AddHierarchy(e.Hierarchy);
-            UpdateTimer();
+            RestartTimer();
         }
 
         private void OnBeforeCloseProject(object sender, CloseProjectEventArgs e)
         {
             _hierarchieslistener.RemoveHierarchy(e.Hierarchy);
-            UpdateTimer();
+            RestartTimer();
         }
 
-        private void UpdateTimer() => _timer.Change(_options.FinalPeriod, Timeout.Infinite);
+        public void RestartTimer(int period = -1) => _timer?.Change(Math.Max(Options.FinalPeriod, period), Timeout.Infinite);
 
         private void ExecuteCloseFolderWithoutRunningDocuments()
         {
-            if (!_options.CollapseFolders)
+            if (!Options.CollapseFolders)
                 return;
 
             try
@@ -78,11 +80,13 @@ namespace AutoCloseFolder
                     _dte.SuppressUI = false;
                 }
             }
+#pragma warning disable CA1031 // Do not catch general exception types
             catch
             {
                 // do nothing
             }
-            UpdateTimer();
+#pragma warning restore CA1031 // Do not catch general exception types
+            RestartTimer();
         }
 
         private void CloseFolderWithoutRunningDocuments(List<string> docs, UIHierarchyItems items)
@@ -110,10 +114,12 @@ namespace AutoCloseFolder
             {
                 fullPath = (string)pi.Properties.Item("FullPath")?.Value;
             }
+#pragma warning disable CA1031 // Do not catch general exception types
             catch
             {
                 // do nothing
             }
+#pragma warning restore CA1031 // Do not catch general exception types
             if (fullPath == null)
                 return true;
 
@@ -125,8 +131,7 @@ namespace AutoCloseFolder
             if (item.Object is ProjectItem pi)
                 return pi;
 
-            var parent = item.Collection?.Parent as UIHierarchyItem;
-            if (parent != null)
+            if (item.Collection?.Parent is UIHierarchyItem parent)
                 return GetProjectItem(parent);
 
             return null;
@@ -157,7 +162,7 @@ namespace AutoCloseFolder
 
         private void ExecuteCloseSolution()
         {
-            if (!_options.CollapseOnClose)
+            if (!Options.CollapseOnClose)
                 return;
 
             var hierarchy = _dte.ToolWindows.SolutionExplorer.UIHierarchyItems;
@@ -193,10 +198,10 @@ namespace AutoCloseFolder
             if (!(item.Object is Project project))
                 return true;
 
-            if (project.Kind == ProjectKinds.vsProjectKindSolutionFolder && _options.CollapseSolutionFolders)
+            if (project.Kind == ProjectKinds.vsProjectKindSolutionFolder && Options.CollapseSolutionFolders)
                 return true;
 
-            if (project.Kind != ProjectKinds.vsProjectKindSolutionFolder && _options.CollapseProjects)
+            if (project.Kind != ProjectKinds.vsProjectKindSolutionFolder && Options.CollapseProjects)
                 return true;
 
             return false;
@@ -204,8 +209,8 @@ namespace AutoCloseFolder
 
         public void Dispose()
         {
-            _timer.Dispose();
-            _documentslistener.Dispose();
+            Interlocked.Exchange(ref _timer, null)?.Dispose();
+            Interlocked.Exchange(ref _documentslistener, null)?.Dispose();
         }
     }
 }
