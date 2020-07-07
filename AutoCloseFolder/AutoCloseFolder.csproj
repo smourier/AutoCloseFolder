@@ -46,6 +46,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AutoCloseFolder.cs" />
+    <Compile Include="HierarchyEventListener.cs" />
     <Compile Include="Options.cs">
       <SubType>Component</SubType>
     </Compile>

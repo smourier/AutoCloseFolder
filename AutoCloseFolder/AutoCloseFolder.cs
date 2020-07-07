@@ -5,6 +5,7 @@ using System.Threading;
 using EnvDTE;
 using EnvDTE80;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Events;
 
 namespace AutoCloseFolder
 {
@@ -13,7 +14,8 @@ namespace AutoCloseFolder
         private readonly DTE2 _dte;
         private readonly Options _options;
         private readonly RunningDocumentTable _table;
-        private readonly RunningDocumentTableEventListener _listener;
+        private readonly RunningDocumentTableEventListener _documentslistener;
+        private readonly HierarchyEventListener _hierarchieslistener;
         private readonly Timer _timer;
 
         public AutoCloseFolder(IServiceProvider serviceProvider, DTE2 dte, Options options)
@@ -21,12 +23,33 @@ namespace AutoCloseFolder
             _dte = dte;
             _options = options;
             _table = new RunningDocumentTable(serviceProvider);
-            _listener = new RunningDocumentTableEventListener(_table);
-            _listener.Change += (s, e) => UpdateTimer();
+            _documentslistener = new RunningDocumentTableEventListener(_table);
+            _documentslistener.Change += (s, e) => UpdateTimer();
+
+            _hierarchieslistener = new HierarchyEventListener();
+            _hierarchieslistener.Change += (s, e) => UpdateTimer();
 
             _timer = new Timer((state) => ExecuteCloseFolderWithoutRunningDocuments(), null, _options.FinalPeriod, Timeout.Infinite);
 
-            Microsoft.VisualStudio.Shell.Events.SolutionEvents.OnBeforeCloseSolution += (s, e) => ExecuteCloseSolution();
+            Microsoft.VisualStudio.Shell.Events.SolutionEvents.OnAfterOpenProject += OnAfterOpenProject;
+            Microsoft.VisualStudio.Shell.Events.SolutionEvents.OnBeforeCloseProject += OnBeforeCloseProject;
+            Microsoft.VisualStudio.Shell.Events.SolutionEvents.OnBeforeCloseSolution += (s, e) =>
+            {
+                _timer.Change(Timeout.Infinite, Timeout.Infinite);
+                ExecuteCloseSolution();
+            };
+        }
+
+        private void OnAfterOpenProject(object sender, OpenProjectEventArgs e)
+        {
+            _hierarchieslistener.AddHierarchy(e.Hierarchy);
+            UpdateTimer();
+        }
+
+        private void OnBeforeCloseProject(object sender, CloseProjectEventArgs e)
+        {
+            _hierarchieslistener.RemoveHierarchy(e.Hierarchy);
+            UpdateTimer();
         }
 
         private void UpdateTimer() => _timer.Change(_options.FinalPeriod, Timeout.Infinite);
@@ -36,21 +59,28 @@ namespace AutoCloseFolder
             if (!_options.CollapseFolders)
                 return;
 
-            var docs = new List<string>();
-            foreach (var doc in _dte.Documents.Cast<Document>())
-            {
-                docs.Add(doc.FullName);
-            }
-
-            var hierarchy = _dte.ToolWindows.SolutionExplorer.UIHierarchyItems;
             try
             {
-                _dte.SuppressUI = true;
-                CloseFolderWithoutRunningDocuments(docs, hierarchy);
+                var docs = new List<string>();
+                foreach (var doc in _dte.Documents.Cast<Document>())
+                {
+                    docs.Add(doc.FullName);
+                }
+
+                var hierarchy = _dte.ToolWindows.SolutionExplorer.UIHierarchyItems;
+                try
+                {
+                    _dte.SuppressUI = true;
+                    CloseFolderWithoutRunningDocuments(docs, hierarchy);
+                }
+                finally
+                {
+                    _dte.SuppressUI = false;
+                }
             }
-            finally
+            catch
             {
-                _dte.SuppressUI = false;
+                // do nothing
             }
             UpdateTimer();
         }
@@ -175,7 +205,7 @@ namespace AutoCloseFolder
         public void Dispose()
         {
             _timer.Dispose();
-            _listener.Dispose();
+            _documentslistener.Dispose();
         }
     }
 }
