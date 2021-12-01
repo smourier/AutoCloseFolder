@@ -81,13 +81,11 @@
     <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="17.0.5233" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="..\AutoCloseFolder\Resources\Icon.png">
-      <Link>Resources\Icon.png</Link>
+    <Content Include="Resources\Icon.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="..\AutoCloseFolder\Resources\Preview.png">
-      <Link>Resources\Preview.png</Link>
+    <Content Include="Resources\Preview.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
